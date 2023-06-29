@@ -47,5 +47,7 @@ resource "aws_iam_openid_connect_provider" "cluster" {
   url             = aws_eks_cluster.eks.identity.0.oidc.0.issuer
 }
 
-
+output "test" {
+  value = aws_eks_cluster.eks.identity.0.oidc.0.issuer
+}
 
