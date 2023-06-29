@@ -59,3 +59,52 @@ resource "aws_iam_role_policy_attachment" "node-AmazonEC2ContainerRegistryReadOn
 }
 
 
+resource "aws_iam_role" "ssm-role-for-pod" {
+  name = "eks-ssm-ps-${var.ENV}-role"
+
+  assume_role_policy = <<POLICY
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Federated": "arn:aws:iam::${data.aws_caller_identity.identity.account_id}:oidc-provider/oidc.eks.us-east-1.amazonaws.com/id/${data.external.thumb.result.thumbprint}"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+                "StringEquals": {
+                    "oidc.eks.us-east-1.amazonaws.com/id/${data.external.thumb.result.thumbprint}:aud": "sts.amazonaws.com"
+                }
+            }
+        }
+    ]
+}
+POLICY
+}
+
+
+resource "aws_iam_role_policy" "ssm-ps-policy" {
+  name = "eks-${var.ENV}-ssm-ps-policy"
+  role = aws_iam_role.ssm-role-for-pod.id
+
+
+  policy = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "VisualEditor0",
+        "Effect" : "Allow",
+        "Action" : [
+          "kms:Decrypt",
+          "ssm:GetParameterHistory",
+          "ssm:GetParametersByPath",
+          "ssm:GetParameters",
+          "ssm:GetParameter"
+        ],
+        "Resource" : concat([var.kms_arn, "arn:aws:ssm:us-east-1:${data.aws_caller_identity.identity.account_id}:parameter/*"])
+      }
+    ]
+  })
+}
+
